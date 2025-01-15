@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "AirQua Terminal firmware uploader",
   "main": "./out/main/index.js",
+  "type": "module",
   "author": {
     "name": "Denis Zhmurenko",
     "email": "hi@dyzoon.dev"
@@ -27,7 +28,8 @@
     "@ant-design/icons": "^5.5.2",
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
-    "antd": "^5.23.1"
+    "antd": "^5.23.1",
+    "electron-dl": "^4.0.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^2.0.0",

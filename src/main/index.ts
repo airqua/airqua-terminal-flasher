@@ -2,6 +2,10 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { download } from 'electron-dl'
+import { getArduinoUrl } from './getArduinoUrl'
+import path from 'node:path'
+import { isNativeError } from 'node:util/types'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -12,7 +16,7 @@ function createWindow(): void {
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false
     }
   })
@@ -40,7 +44,20 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('download-arduino', async (event) => {
+    console.log('download-arduino: started')
+    try {
+      const url = await getArduinoUrl()
+      const file = await download(BrowserWindow.getFocusedWindow()!, url, {
+        directory: path.join(app.getAppPath(), 'arduino-cli/')
+      })
+      event.sender.send('download-arduino-reply-ok', file.getSavePath())
+      console.log('download-arduino: complete with ', file.getSavePath())
+    } catch (e) {
+      console.error('download-arduino: error with ', e)
+      event.sender.send('download-arduino-reply-error', isNativeError(e) ? e.message : undefined)
+    }
+  })
 
   createWindow()
 
