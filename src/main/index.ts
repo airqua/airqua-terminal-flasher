@@ -2,15 +2,12 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { download } from 'electron-dl'
-import { getArduinoUrl } from './getArduinoUrl'
-import path from 'node:path'
-import { isNativeError } from 'node:util/types'
+import { performFlash } from './performFlash'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 550,
-    height: 370,
+    height: 490,
     title: 'AirQua Terminal Flasher',
     show: false,
     autoHideMenuBar: true,
@@ -44,20 +41,7 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  ipcMain.on('download-arduino', async (event) => {
-    console.log('download-arduino: started')
-    try {
-      const url = await getArduinoUrl()
-      const file = await download(BrowserWindow.getFocusedWindow()!, url, {
-        directory: path.join(app.getAppPath(), 'arduino-cli/')
-      })
-      event.sender.send('download-arduino-reply-ok', file.getSavePath())
-      console.log('download-arduino: complete with ', file.getSavePath())
-    } catch (e) {
-      console.error('download-arduino: error with ', e)
-      event.sender.send('download-arduino-reply-error', isNativeError(e) ? e.message : undefined)
-    }
-  })
+  ipcMain.on('flash', async (event, id, token) => performFlash(event, app, id, token))
 
   createWindow()
 
