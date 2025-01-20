@@ -7,7 +7,7 @@ import { performFlash } from './performFlash'
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 550,
-    height: 490,
+    height: 550,
     title: 'AirQua Terminal Flasher',
     show: false,
     autoHideMenuBar: true,
@@ -41,7 +41,9 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  ipcMain.on('flash', async (event, id, token) => performFlash(event, app, id, token))
+  ipcMain.on('flash', async (event, id, token, freshInstall) =>
+    performFlash(event, app, id, token, freshInstall)
+  )
 
   createWindow()
 

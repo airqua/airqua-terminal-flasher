@@ -1,12 +1,16 @@
 import { FC, useEffect, useRef, useState } from 'react'
-import { App, Button, Flex, Form, Input, Typography } from 'antd'
+import { App, Button, Flex, Form, Input, Segmented, Typography } from 'antd'
 import { FormType } from '../types/FormType'
 import { useHandleStartFlash } from '../hooks/useHandleStartFlash'
 import { TextAreaRef } from 'antd/es/input/TextArea'
 
+const SEGMENTED_OPTIONS = [
+  { label: 'First install', value: 'new' },
+  { label: 'Update', value: 'update' }
+]
+
 export const MainView: FC = () => {
   const { message } = App.useApp()
-  console.log(message)
   const [form] = Form.useForm<FormType>()
   const [loading, setLoading] = useState(false)
 
@@ -42,11 +46,14 @@ export const MainView: FC = () => {
     <Flex vertical>
       <Flex vertical>
         <Typography.Title>AirQua Terminal Flasher</Typography.Title>
-        <Form<FormType> form={form} layout="vertical" onFinish={handleFlash}>
-          <Form.Item<FormType> name="id" label="Sensor identificator">
+        <Form<FormType> form={form} layout="vertical" requiredMark={false} onFinish={handleFlash}>
+          <Form.Item<FormType> name="type" initialValue="new" rules={[{ required: true }]}>
+            <Segmented options={SEGMENTED_OPTIONS} />
+          </Form.Item>
+          <Form.Item<FormType> name="id" label="Sensor identificator" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item<FormType> name="token" label="Token">
+          <Form.Item<FormType> name="token" label="Token" rules={[{ required: true }]}>
             <Input.Password />
           </Form.Item>
           <Form.Item<FormType>>

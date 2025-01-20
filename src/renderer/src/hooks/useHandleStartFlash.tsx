@@ -24,7 +24,7 @@ export const useHandleStartFlash = ({
       })
       if (confirm) {
         setLoading(true)
-        window.electron.ipcRenderer.send('flash', values.id, values.token)
+        window.electron.ipcRenderer.send('flash', values.id, values.token, values.type === 'new')
       }
     }
   ]

@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: airqua-terminal-flasher
+appId: uk.airqua.terminal.flasher
+productName: AirQua Terminal Flasher
 directories:
   buildResources: build
 files:
@@ -33,7 +33,7 @@ linux:
     - AppImage
     - snap
     - deb
-  maintainer: electronjs.org
+  maintainer: airqua.uk
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}

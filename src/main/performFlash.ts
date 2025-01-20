@@ -1,12 +1,13 @@
 import { download } from 'electron-dl'
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import child_process from 'node:child_process'
 import { isNativeError } from 'node:util/types'
 import { getArduinoUrl } from './utils/getArduinoUrl'
 import { BrowserWindow } from 'electron'
 import { getFirmwareUrl } from './utils/getFirmwareUrl'
 import { decompressFile } from './utils/decompressFile'
+import { flashAmdb } from './flashAmdb'
+import { makeShell } from './makeShell'
 
 const ARDUINO_CLI_BOARD_URL =
   'https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json'
@@ -15,12 +16,21 @@ export const performFlash = async (
   event: Electron.IpcMainEvent,
   app: Electron.App,
   id: string,
-  token: string
+  token: string,
+  freshInstall: boolean
 ): Promise<void> => {
   const log = (m: string): void => event.sender.send('log', m)
   log('starting')
   try {
     const w = BrowserWindow.getFocusedWindow()!
+
+    if (freshInstall) {
+      await flashAmdb({
+        log,
+        app,
+        w
+      })
+    }
 
     log('dl: started arduino')
     const arduinoFile = await download(w, await getArduinoUrl(), {
@@ -51,62 +61,50 @@ export const performFlash = async (
     const firmware = dir.find((s) => s.includes('airqua-terminal'))
     if (!firmware) throw new Error('firmware not found')
 
-    const shell =
-      process.platform === 'win32'
-        ? child_process.spawn('cmd.exe', ['/K'], {
-            shell: true
+    const { shellWrite, shellEnd } = makeShell({
+      log,
+      onStdout: (data) => {
+        if (data.includes('>')) return
+        log(`stdout: ${data}`)
+        if (data.includes('Port')) {
+          log('shell: includes port')
+          // FIXME that's not good
+          let found = false
+          data.split('\n').forEach((st) => {
+            if (st.includes('seeed_wio_terminal')) {
+              log(`shell: port${st.split(' ')[0]}`)
+              log('flash: writing core update-index + compile')
+              shellWrite(
+                `${path.join(app.getAppPath(), 'arduino-cli', exec)} core update-index --additional-urls ${ARDUINO_CLI_BOARD_URL}`
+              )
+              shellWrite(
+                `${path.join(app.getAppPath(), 'arduino-cli', exec)} compile -b Seeeduino:samd:seeed_wio_terminal ` +
+                  `--additional-urls ${ARDUINO_CLI_BOARD_URL} -u -t -p ${st.split(' ')[0]} --libraries ${path.join(app.getAppPath(), 'arduino-cli', firmware, 'libraries/')} ` +
+                  path.join(
+                    app.getAppPath(),
+                    'arduino-cli',
+                    firmware,
+                    'WioTerminal',
+                    'WioTerminal.ino'
+                  )
+              )
+              found = true
+            }
           })
-        : child_process.spawn('sh', { shell: true })
-    let ended = false
-    shell.stdout.setEncoding('utf-8')
-    shell.stdin.setDefaultEncoding('utf-8')
-    const shellWrite = (data: string): unknown => !ended && shell.stdin.write(data + '\r\n')
-    const shellEnd = (m: string): void => {
-      log(m)
-      ended = true
-      shell.kill()
-    }
-
-    const handlePortReceived = (port: string): void => {
-      log('flash: writing core update-index + compile')
-      shellWrite(
-        `${path.join(app.getAppPath(), 'arduino-cli', exec)} core update-index --additional-urls ${ARDUINO_CLI_BOARD_URL}`
-      )
-      shellWrite(
-        `${path.join(app.getAppPath(), 'arduino-cli', exec)} compile -b Seeeduino:samd:seeed_wio_terminal ` +
-          `--additional-urls ${ARDUINO_CLI_BOARD_URL} -u -t -p ${port} --libraries ${path.join(app.getAppPath(), 'arduino-cli', firmware, 'libraries/')} ` +
-          path.join(app.getAppPath(), 'arduino-cli', firmware)
-      )
-    }
-
-    shell.stdout.on('data', (data) => {
-      if (data.includes('>')) return
-      log(`stdout: ${data}`)
-      if (data.includes('Port')) {
-        log('shell: includes port')
-        // FIXME that's not good
-        let found = false
-        data.split('\n').forEach((st) => {
-          if (st.includes('seeed_wio_terminal')) {
-            log(`shell: port${st.split(' ')[0]}`)
-            handlePortReceived(st.split(' ')[0])
-            found = true
+          if (!found) {
+            shellEnd('Wio Terminal is not connected')
+            event.sender.send('flash-error')
           }
-        })
-        if (!found) {
-          shellEnd('Wio Terminal is not connected')
-          event.sender.send('flash-error')
+        } else if (data.includes('Verify successful')) {
+          shellEnd('Flash complete')
+          event.sender.send('flash-success')
         }
-      } else if (data.includes('Verify successful')) {
-        shellEnd('Flash complete')
-        event.sender.send('flash-success')
+      },
+      onStderr: (data) => {
+        log(`stderr: ${data}`)
+        shellEnd('flash: got error output, killing shell')
+        event.sender.send('flash-error')
       }
-    })
-
-    shell.stderr.on('data', (data) => {
-      log(`stderr: ${data}`)
-      shellEnd('flash: got error output, killing shell')
-      event.sender.send('flash-error')
     })
 
     log('flash: inserting credentials')
