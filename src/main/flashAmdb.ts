@@ -37,17 +37,11 @@ export const flashAmdb = ({ log, app, w }: Params): Promise<void> =>
                 'ambd_flash_tool.exe'
               )
             : `python3 ${path.join(app.getAppPath(), 'arduino-cli', 'ambd_flash_tool-master', 'ambd_flash_tool.py')}`
-        let flashInited = false
         const { shellWrite, shellEnd } = makeShell({
           log,
           onStdout: (data) => {
             if (data.includes('>')) return
             log(`stdout: ${data}`)
-            if (!flashInited) {
-              shellWrite(`${executable} flash`)
-              flashInited = true
-              return
-            }
             shellEnd('amdb: complete')
             resolve()
           },
@@ -58,6 +52,7 @@ export const flashAmdb = ({ log, app, w }: Params): Promise<void> =>
           }
         })
         shellWrite(`${executable} erase`)
+        shellWrite(`${executable} flash`)
       })
       .catch(reject)
   })

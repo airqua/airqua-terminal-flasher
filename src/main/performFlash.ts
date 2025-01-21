@@ -64,7 +64,6 @@ export const performFlash = async (
             if (st.includes('seeed_wio_terminal')) {
               log(`shell: port ${st.split(' ')[0]}`)
               log('flash: writing core update-index + compile')
-              shellWrite(`${execPath} core update-index --additional-urls ${ARDUINO_CLI_BOARD_URL}`)
               shellWrite(
                 `${execPath} compile -b Seeeduino:samd:seeed_wio_terminal ` +
                   `--additional-urls ${ARDUINO_CLI_BOARD_URL} -u -t -p ${st.split(' ')[0]} --libraries ${librariesPath} ` +
@@ -96,6 +95,14 @@ export const performFlash = async (
       id
     })
 
+    log('flash: updating index')
+    shellWrite(`${execPath} core update-index --additional-urls ${ARDUINO_CLI_BOARD_URL}`)
+    log('flash: downloading Seeeduino:samd')
+    shellWrite(
+      `${execPath} core download Seeeduino:samd --additional-urls ${ARDUINO_CLI_BOARD_URL}`
+    )
+    log('flash: installing Seeeduino:samd')
+    shellWrite(`${execPath} core install Seeeduino:samd --additional-urls ${ARDUINO_CLI_BOARD_URL}`)
     log('flash: searching for board')
     shellWrite(`${execPath} board list --additional-urls ${ARDUINO_CLI_BOARD_URL}`) // getting wio port
   } catch (e) {
